@@ -1,112 +1,111 @@
-﻿using UnityEngine;
-using System.Collections;
-using DG.Tweening;
+﻿using NeuralNetwork;
+using UnityEngine;
 
-public class BirdControl : MonoBehaviour {
+public class BirdControl : MonoBehaviour
+{
+    public int rotateRate = 10;
+    public float upSpeed = 10;
+    public PipeSpawner pipeSpawner;
 
-	public int rotateRate = 10;
-	public float upSpeed = 10;
-    public GameObject scoreMgr;
+    public NeuralNetworkManager networkManager;
+    public NeuralNetwork.NeuralNetwork network;
 
-    public AudioClip jumpUp;
-    public AudioClip hit;
-    public AudioClip score;
+    public bool dead;
 
-    public bool inGame = false;
+    private bool _landed;
+    private float _spawnTime;
+    private int _scores;
 
-	private bool dead = false;
-	private bool landed = false;
+    private Rigidbody2D _rigidbody;
+    private static readonly int Die = Animator.StringToHash("die");
 
-    private Sequence birdSequence;
 
-    // Use this for initialization
-    void Start () {
-        float birdOffset = 0.05f;
-        float birdTime = 0.3f;
-        float birdStartY = transform.position.y;
+    private void Start()
+    {
+        _rigidbody = GetComponent<Rigidbody2D>();
 
-        birdSequence = DOTween.Sequence();
-
-        birdSequence.Append(transform.DOMoveY(birdStartY + birdOffset, birdTime).SetEase(Ease.Linear))
-            .Append(transform.DOMoveY(birdStartY - 2 * birdOffset, 2 * birdTime).SetEase(Ease.Linear))
-            .Append(transform.DOMoveY(birdStartY, birdTime).SetEase(Ease.Linear))
-            .SetLoops(-1);
+        _spawnTime = Time.time;
     }
-	
-	// Update is called once per frame
-	void Update () {
-        if (!inGame)
+
+    private void Update()
+    {
+        if (!_landed && !dead)
         {
-            return;
+            network.fitness = Time.time - _spawnTime + _scores;
+            UseNeuralNetwork();
         }
-        birdSequence.Kill();
 
-		if (!dead)
-		{
-			if (Input.GetButtonDown("Fire1"))
-			{
-                JumpUp();
-			}
-		}
+        if (!_landed)
+        {
+            var v = _rigidbody.velocity.y;
+            var rotate = Mathf.Min(Mathf.Max(-90, v * rotateRate + 60), 30);
+            transform.rotation = Quaternion.Euler(0f, 0f, rotate);
+        }
+        else
+        {
+            _rigidbody.rotation = -90;
+        }
+    }
 
-		if (!landed)
-		{
-			float v = transform.GetComponent<Rigidbody2D>().velocity.y;
-			
-			float rotate = Mathf.Min(Mathf.Max(-90, v * rotateRate + 60), 30);
-			
-			transform.rotation = Quaternion.Euler(0f, 0f, rotate);
-		}
-		else
-		{
-			transform.GetComponent<Rigidbody2D>().rotation = -90;
-		}
-	}
+    private void UseNeuralNetwork()
+    {
+        var nearestPipePassPoint = pipeSpawner.FindNextPipePosition();
+        var inputs = new float[4];
+        inputs[0] = transform.position.y;
+        inputs[1] = nearestPipePassPoint.x;
+        inputs[2] = nearestPipePassPoint.y - 0.5f;
+        inputs[3] = nearestPipePassPoint.y + 0.5f;
 
-	void OnTriggerEnter2D (Collider2D other)
-	{
-		if (other.name == "land" || other.name == "pipe_up" || other.name == "pipe_down")
-		{
-            if (!dead)
+        var output = network.FeedForward(inputs);
+        if (output[0] > 0)
+        {
+            JumpUp();
+        }
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (dead && _landed) return;
+
+        switch (other.tag)
+        {
+            case "movable":
             {
-                GameObject[] objs = GameObject.FindGameObjectsWithTag("movable");
-                foreach (GameObject g in objs)
+                if (!dead)
                 {
-                    g.BroadcastMessage("GameOver");
+                    GetComponent<Animator>().SetTrigger(Die);
+                    var spriteRenderer = GetComponent<SpriteRenderer>();
+                    spriteRenderer.color = new Color(1, 0, 0, 0.1f);
+                    spriteRenderer.sortingLayerName = "back";
+
+                    GameOver();
                 }
 
-                GetComponent<Animator>().SetTrigger("die");
-                AudioSource.PlayClipAtPoint(hit, Vector3.zero);
+                if (other.name == "land")
+                {
+                    Destroy(_rigidbody);
+                    Destroy(GetComponent<SpriteRenderer>());
+                    enabled = false;
+
+                    _landed = true;
+                }
+
+                break;
             }
-
-			
-
-			if (other.name == "land")
-			{
-				transform.GetComponent<Rigidbody2D>().gravityScale = 0;
-				transform.GetComponent<Rigidbody2D>().velocity = new Vector2(0, 0);
-
-				landed = true;
-			}
-		}
-
-        if (other.name == "pass_trigger")
-        {
-            scoreMgr.GetComponent<ScoreMgr>().AddScore();
-            AudioSource.PlayClipAtPoint(score, Vector3.zero);
+            case "pass_trigger":
+                ++_scores;
+                break;
         }
-
-
-	}
+    }
 
     public void JumpUp()
     {
-        transform.GetComponent<Rigidbody2D>().velocity = new Vector2(0, upSpeed);
-        AudioSource.PlayClipAtPoint(jumpUp, Vector3.zero);
+        _rigidbody.velocity = new Vector2(0, upSpeed);
     }
-	
-	public void GameOver()
-	{
-		dead = true;
-	}
+
+    public void GameOver()
+    {
+        dead = true;
+        networkManager.IncreaseDead();
+    }
 }

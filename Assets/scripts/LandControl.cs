@@ -1,27 +1,23 @@
-﻿using UnityEngine;
-using System.Collections;
-using DG.Tweening;
+﻿using DG.Tweening;
+using UnityEngine;
 
-public class LandControl : MonoBehaviour {
+public class LandControl : MonoBehaviour
+{
+    private Sequence _landSequence;
 
-    private Sequence landSequence;
-	// Use this for initialization
-	void Start () {
+    private void Start()
+    {
         // land continue moving
-        landSequence = DOTween.Sequence();
+        _landSequence = DOTween.Sequence();
 
-        landSequence.Append(transform.DOMoveX(transform.position.x - 0.48f, 0.5f).SetEase(Ease.Linear))
-            .Append(transform.DOMoveX(transform.position.x, 0f).SetEase(Ease.Linear))
+        var position = transform.position;
+        _landSequence.Append(transform.DOMoveX(position.x - 0.48f, 0.5f).SetEase(Ease.Linear))
+            .Append(transform.DOMoveX(position.x, 0f).SetEase(Ease.Linear))
             .SetLoops(-1);
     }
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
 
     public void GameOver()
     {
-        landSequence.Kill();
+        _landSequence.Kill();
     }
 }
