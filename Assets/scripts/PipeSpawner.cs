@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class PipeSpawner : MonoBehaviour
 {
-    private const float BirdSpawnXOfssetted = NeuralNetworkManager.BirdSpawnX - 0.45f;
+    private const float BirdSpawnXOfssetted = NeuralNetworkManager.BirdSpawnX - 0.425f;
     private const float PipeMinY = 1.4f;
     private const float PipeMaxY = 3.9f;
 
@@ -42,7 +42,7 @@ public class PipeSpawner : MonoBehaviour
         _pipes.RemoveFirst();
     }
 
-    public Vector3 FindNextPipePosition()
+    public Vector3 GetNextPipePosition()
     {
         if (_nextPipeCachedPosition == null || _nextPipeCachedPosition.position.x < BirdSpawnXOfssetted)
         {
@@ -50,6 +50,6 @@ public class PipeSpawner : MonoBehaviour
                 ?.passPoint.transform;
         }
 
-        return _nextPipeCachedPosition != null ? _nextPipeCachedPosition.position : Vector3.zero;
+        return _nextPipeCachedPosition?.position ?? Vector3.down;
     }
 }

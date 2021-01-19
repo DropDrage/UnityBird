@@ -49,7 +49,7 @@ public class BirdControl : MonoBehaviour
 
     private void UseNeuralNetwork()
     {
-        var nearestPipePassPoint = pipeSpawner.FindNextPipePosition();
+        var nearestPipePassPoint = pipeSpawner.GetNextPipePosition();
         var inputs = new float[4];
         inputs[0] = transform.position.y;
         inputs[1] = nearestPipePassPoint.x;
@@ -85,6 +85,8 @@ public class BirdControl : MonoBehaviour
                 {
                     Destroy(_rigidbody);
                     Destroy(GetComponent<SpriteRenderer>());
+                    Destroy(GetComponent<CircleCollider2D>());
+                    Destroy(GetComponent<Animator>());
                     enabled = false;
 
                     _landed = true;

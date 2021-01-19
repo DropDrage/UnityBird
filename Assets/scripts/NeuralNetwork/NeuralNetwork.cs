@@ -107,7 +107,7 @@ namespace NeuralNetwork
             return neurons[neurons.Length - 1];
         }
 
-        private static float Activate(float value) => (float) Math.Tanh(value);
+        private static int Activate(float value) => Math.Sign(value);
 
         //used as a simple mutation function for any genetic implementations.
         public void Mutate(int chance, float val)

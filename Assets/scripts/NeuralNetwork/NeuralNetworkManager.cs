@@ -8,21 +8,33 @@ namespace NeuralNetwork
     public class NeuralNetworkManager : MonoBehaviour
     {
         public const float BirdSpawnX = 0.5f;
+        private const float PiDiv3 = Mathf.PI / 2.95f;
+        private const float MinDynamicParam = 0.05f;
 
         [ReadOnly] [SerializeField] private int generation;
+        [ReadOnly] [SerializeField] private int bestGeneration;
+        [ReadOnly] [SerializeField] private int generation100;
         [ReadOnly] [SerializeField] private float bestScore;
         [ReadOnly] [SerializeField] private float bestScorePrev;
         [ReadOnly] [SerializeField] private float bestScoreNow;
 
-        public int populationSize;
+        [ReadOnly] [SerializeField] private float dynamicMutationChance;
+        [ReadOnly] [SerializeField] private float dynamicMutationStrength;
+
+        [Space] public int populationSize;
         public GameObject prefab;
         [SerializeField] private GameMain gameMain;
 
-        [Range(0.0001f, 1f)] public float mutationChance = 0.01f;
+        [Range(0.0001f, 1f)] public float mutationChance = 0.25f;
         [Range(0f, 1f)] public float mutationStrength = 0.5f;
-        [Range(0.1f, 10f)] public float gameSpeed = 1f;
+        [Range(0.1f, 10f)] public float gameSpeed = 4f;
+
+        [SerializeField] private int targetScore = 500;
 
         private readonly int[] _layers = {4, 8, 8, 1}; //initializing network to the right size
+        // Manual: 16 = 27, 29; 32 = 13, 64 = 23
+        // Auto chance 0.1, strength 0.15: 4 = 62, 120; 64 = 94
+        // Dynamic: 8 = 30, 47, 58; 12 = 67; 16 = 60;
 
         private int _deadCount;
 
@@ -32,6 +44,9 @@ namespace NeuralNetwork
 
         private void Start()
         {
+            dynamicMutationChance = mutationChance;
+            dynamicMutationStrength = mutationStrength;
+
             InitNetworks();
             CreateBirdControls();
         }
@@ -42,7 +57,7 @@ namespace NeuralNetwork
             for (var i = 0; i < populationSize; i++)
             {
                 var network = new NeuralNetwork(_layers);
-                network.Load("Assets/NN_Model_Best.txt");
+                // network.Load("Assets/NN_Model_Best.txt");
                 networks.Add(network);
             }
         }
@@ -68,7 +83,7 @@ namespace NeuralNetwork
                     .GetComponent<BirdControl>();
                 bird.network = networks[i];
                 bird.networkManager = this;
-                bird.pipeSpawner = gameMain.pipeSpawner.GetComponent<PipeSpawner>();
+                bird.pipeSpawner = gameMain.pipeSpawner;
                 _birds.Add(bird);
             }
 
@@ -82,6 +97,17 @@ namespace NeuralNetwork
             if (networks[0].fitness >= bestScore)
             {
                 networks[0].Save("Assets/NN_Model.txt");
+                bestGeneration = generation - 1;
+                if (bestScore > 100 && generation100 == 0)
+                {
+                    generation100 = generation - 1;
+                }
+
+                var targetDifference = (bestScore / targetScore - 1) * PiDiv3;
+                var doubleDifference = targetDifference * targetDifference;
+                dynamicMutationChance = mutationChance * Mathf.Sin(Mathf.Pow(doubleDifference, 2f) + MinDynamicParam);
+                dynamicMutationStrength =
+                    mutationStrength * Mathf.Sin(Mathf.Pow(doubleDifference, 3f) + MinDynamicParam);
             }
 
             var topNetworks = networks.GetRange(0, 3);
@@ -96,7 +122,7 @@ namespace NeuralNetwork
             for (var i = 0; i < networks.Count / 2; i++)
             {
                 networks[i] = topNetworks[i % topNetworks.Count].Copy(new NeuralNetwork(_layers));
-                networks[i].Mutate((int) (1 / mutationChance), mutationStrength);
+                networks[i].Mutate((int) (1 / dynamicMutationChance), dynamicMutationStrength);
             }
 
             for (var i = networkHalfCount; i < networkHalfCount * 1.25; i++)
@@ -107,7 +133,7 @@ namespace NeuralNetwork
             for (var i = (int) (networkHalfCount * 1.25); i < networks.Count; i++)
             {
                 networks[i] = topHalfNetworks[i % topHalfNetworks.Count].Copy(new NeuralNetwork(_layers));
-                networks[i].Mutate((int) (1 / mutationChance), mutationStrength);
+                networks[i].Mutate((int) (1 / dynamicMutationChance), dynamicMutationStrength);
             }
 
             if (networks.Count < populationSize)
