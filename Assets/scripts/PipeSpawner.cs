@@ -1,35 +1,31 @@
 ﻿using UnityEngine;
-using System.Collections;
 
-public class PipeSpawner : MonoBehaviour {
+public class PipeSpawner : MonoBehaviour
+{
+    private const float PipeMinY = 1.4f;
+    private const float PipeMaxY = 3.9f;
 
-	public float spawnTime = 5f;		// The amount of time between each spawn.
-	public float spawnDelay = 3f;		// The amount of time before spawning starts.
-	public GameObject pipe;	
-	public float[] heights;
-	
-	
-	void Start ()
-	{
-		// Start calling the Spawn function repeatedly after a delay .		
-	}
+    public float spawnTime = 5f;
+    public float firstSpawnDelay = 3f;
+
+    public GameObject pipe;
+
 
     public void StartSpawning()
     {
-        InvokeRepeating("Spawn", spawnDelay, spawnTime);
+        InvokeRepeating(nameof(Spawn), firstSpawnDelay, spawnTime);
     }
-	
-	
-	void Spawn ()
-	{
-		int heightIndex = Random.Range(0, heights.Length);
-		Vector2 pos = new Vector2(transform.position.x, heights[heightIndex]);
 
-		Instantiate(pipe, pos, transform.rotation);
-	}
+    private void Spawn()
+    {
+        var transform1 = transform;
+        var pos = new Vector2(transform1.position.x, Random.Range(PipeMinY, PipeMaxY));
 
-	public void GameOver()
-	{
-		CancelInvoke("Spawn");
-	}
+        Instantiate(pipe, pos, transform1.rotation);
+    }
+
+    public void GameOver()
+    {
+        CancelInvoke(nameof(Spawn));
+    }
 }

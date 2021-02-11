@@ -1,104 +1,77 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System;
 using DG.Tweening;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+using Random = UnityEngine.Random;
 
-public class StartMain : MonoBehaviour {
+public class StartMain : MonoBehaviour
+{
+    public SpriteRenderer backgroundSprite;
+    public Sprite[] backList;
 
-    public GameObject bird;
-    public GameObject land;
-    public GameObject back_ground;
-    public Sprite[] back_list;
+    private GameObject _nowPressBtn;
 
-    private GameObject nowPressBtn = null;
 
-    // Use this for initialization
-    void Start () {      
-
-        // random background
-        int index = Random.Range(0, back_list.Length);
-        back_ground.GetComponent<SpriteRenderer>().sprite = back_list[index];
-
-    }
-	
-	// Update is called once per frame
-	void Update () {
-        // Handle native touch events
-        foreach (Touch touch in Input.touches)
-        {
-            HandleTouch(touch.fingerId, touch.position, touch.phase);
-        }
-
-        // Simulate touch events from mouse events
-        if (Input.touchCount == 0)
-        {
-            if (Input.GetMouseButtonDown(0))
-            {
-                HandleTouch(10, Input.mousePosition, TouchPhase.Began);
-            }
-            if (Input.GetMouseButton(0))
-            {
-                HandleTouch(10, Input.mousePosition, TouchPhase.Moved);
-            }
-            if (Input.GetMouseButtonUp(0))
-            {
-                HandleTouch(10, Input.mousePosition, TouchPhase.Ended);
-            }
-        }
-    }
-
-    private void HandleTouch(int touchFingerId, Vector2 touchPosition, TouchPhase touchPhase)
+    private void Start()
     {
-        Vector3 wp = Camera.main.ScreenToWorldPoint(touchPosition);
-        Vector2 worldPos = new Vector2(wp.x, wp.y);
-        switch (touchPhase)
-        {
-            case TouchPhase.Began:
-                print(touchPosition);
-                print(worldPos);
+        var index = Random.Range(0, backList.Length);
+        backgroundSprite.sprite = backList[index];
+    }
 
-                foreach(Collider2D c in Physics2D.OverlapPointAll(worldPos))
+    public void HandleTouch(InputAction.CallbackContext context)
+    {
+        var worldPoint = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+        var worldPos = new Vector2(worldPoint.x, worldPoint.y);
+        switch (context.phase)
+        {
+            case InputActionPhase.Started:
+
+                foreach (var c in Physics2D.OverlapPointAll(worldPos))
                 {
                     name = c.gameObject.name;
                     print(name);
                     if (name == "start_btn" || name == "rank_btn" || name == "rate_btn")
                     {
                         c.transform.DOMoveY(c.transform.position.y - 0.03f, 0f);
-                        nowPressBtn = c.gameObject;
+                        _nowPressBtn = c.gameObject;
                     }
                 }
-                break;
-            case TouchPhase.Moved:
-                // TODO
-                break;
-            case TouchPhase.Ended:
-                if (nowPressBtn)
-                {
-                    nowPressBtn.transform.DOMoveY(nowPressBtn.transform.position.y + 0.03f, 0f);
 
-                    foreach (Collider2D c in Physics2D.OverlapPointAll(worldPos))
+                break;
+            case InputActionPhase.Canceled:
+                if (_nowPressBtn)
+                {
+                    _nowPressBtn.transform.DOMoveY(_nowPressBtn.transform.position.y + 0.03f, 0f);
+
+                    foreach (var c in Physics2D.OverlapPointAll(worldPos))
                     {
                         name = c.gameObject.name;
                         print(name);
 
-                        if (name == nowPressBtn.name)
+                        if (name == _nowPressBtn.name && name == "start_btn")
                         {
-                            if (name == "start_btn")
-                            {
-                                OnPressStart();
-                            }
+                            OnPressStart();
                         }
                     }
 
-                    nowPressBtn = null;
+                    _nowPressBtn = null;
                 }
 
-                
                 break;
+            case InputActionPhase.Disabled:
+                break;
+            case InputActionPhase.Waiting:
+                break;
+            case InputActionPhase.Performed:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(context.phase), context.phase, null);
         }
     }
 
-    private void OnPressStart()
+    private static void OnPressStart()
     {
-        Application.LoadLevel(1);
+        SceneManager.LoadScene(1);
     }
 }
